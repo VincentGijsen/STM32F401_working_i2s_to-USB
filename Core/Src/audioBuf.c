@@ -99,11 +99,32 @@ BUFFER_CMD_typeDef Buffer_AddToBuffer(USBD_AUDIO_HandleTypeDef *haudio,
  * when called, generates the next audio frame with variable length
  */
 BUFFER_CMD_typeDef Buffer_GetNextAudioFrame(USBD_AUDIO_HandleTypeDef *haudio){
-	uint8_t nextFrameSize = 192;
+
+#if USBD_AUDIO_FREQ == 44100
+	//logic to deal with the 44.1 frames to average out 'broken' frame
+//every 5th frame, add 2 packages, to compensate for the 0.4 increment
+
+	#define FRAMESIZE (44 *2 *2)
+
+volatile static uint8_t callcnt = 0;
+
+uint8_t nextFrameSize = FRAMESIZE;
+callcnt++;
+if(callcnt == 5){
+	callcnt = 0;
+	nextFrameSize +=2;
+}
+
+#else
+#define FRAMESIZE (48 *2 *2)
+uint8_t nextFrameSize = FRAMESIZE;
+
+#endif
 
 	//used for buffer tuning
 
-	const uint16_t LOWER_ROOM = (10* 192) + 20;
+	const uint16_t LOWER_ROOM = (20* FRAMESIZE);
+	const uint16_t LOWEST_ROOM = (10* FRAMESIZE);
 	const uint16_t UPPER_ROOM = AUDIO_TOTAL_BUF_SIZE - LOWER_ROOM;
 
 	uint16_t packetsBuffered = 0;
@@ -119,7 +140,7 @@ BUFFER_CMD_typeDef Buffer_GetNextAudioFrame(USBD_AUDIO_HandleTypeDef *haudio){
 
 
 	//logic for descision making
-	const uint16_t halfBufferFilled = ( AUDIO_TOTAL_BUF_SIZE / 2) -2;
+	const uint16_t halfBufferFilled = ( AUDIO_TOTAL_BUF_SIZE / 2) - (FRAMESIZE * 4);
 
 	switch(bufferExtrainfo.playingStatus)
 	{
@@ -136,12 +157,16 @@ BUFFER_CMD_typeDef Buffer_GetNextAudioFrame(USBD_AUDIO_HandleTypeDef *haudio){
 
 		case PLAYING_RUNNING:
 
+			if(bufferExtrainfo.dataBuffered  < LOWEST_ROOM){
+							nextFrameSize-= 32;
+							break;
+			}
 			if(bufferExtrainfo.dataBuffered  < LOWER_ROOM){
-				nextFrameSize-=4;
+				nextFrameSize-=8;
 				break;
 				}
 			if(bufferExtrainfo.dataBuffered  > UPPER_ROOM){
-				nextFrameSize+=4;
+				nextFrameSize+=8;
 				break;
 
 			}

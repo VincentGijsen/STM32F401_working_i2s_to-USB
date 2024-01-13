@@ -7,7 +7,7 @@
 #include "usbd_audio.h"
 
 
-#define BUFFER_SLOTS 6
+#define BUFFER_SLOTS 12
 #define SAMPLERATE_MS 48
 #define SAMPLES_16_MS (SAMPLERATE_MS * 2)
 #define SAMPLES_8_MS (SAMPLES_16_MS * 2)
@@ -24,8 +24,8 @@ extern USBD_HandleTypeDef *pdefRef;
 extern volatile uint8_t send_audio_frame;
 
 #define USBSAMPLES 1
-extern volatile uint8_t usbData[USBSAMPLES][192];
-extern volatile uint8_t usbPkgIdx;
+//extern volatile uint8_t usbData[USBSAMPLES][192];
+//extern volatile uint8_t usbPkgIdx;
 extern volatile uint8_t usbPkgSendFlag;
 extern volatile USBD_HandleTypeDef *pdevRef;
 

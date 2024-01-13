@@ -103,7 +103,7 @@ volatile USBD_HandleTypeDef *pdevRef;
   (uint8_t)(frq), (uint8_t)((frq >> 8)), (uint8_t)((frq >> 16))
 
 #define AUDIO_PACKET_SZE(frq) \
-  (uint8_t)((((frq * 2U * 2U) )/ 1000U)+4 & 0xFFU), (uint8_t)((((frq * 2U * 2U) / 1000U) >> 8) & 0xFFU)
+  (uint8_t)((((frq * 2U * 2U) )/ 1000U)+8 & 0xFFU), (uint8_t)((((frq * 2U * 2U) / 1000U)+8 >> 8) & 0xFFU)
 
 #ifdef USE_USBD_COMPOSITE
 #define AUDIO_PACKET_SZE_WORD(frq)     (uint32_t)((((frq) * 2U * 2U)/1000U))
@@ -306,7 +306,7 @@ __ALIGN_BEGIN static uint8_t USBD_AUDIO_CfgDesc[USB_AUDIO_CONFIG_DESC_SIZ] __ALI
   USB_DESC_TYPE_ENDPOINT,               /* bDescriptorType */
   AUDIO_IN_EP,                         /* bEndpointAddress 1 out endpoint */
   USBD_EP_TYPE_ISOC |0x04,                    /* bmAttributes */
-  AUDIO_PACKET_SZE(USBD_AUDIO_FREQ),    /* wMaxPacketSize in Bytes (Freq(Samples)*2(Stereo)*2(HalfWord)) */
+  AUDIO_PACKET_SZE(USBD_AUDIO_FREQ_MAX),    /* wMaxPacketSize in Bytes (Freq(Samples)*2(Stereo)*2(HalfWord)) */
   AUDIO_FS_BINTERVAL,                   /* bInterval */
   0x00,                                 /* bRefresh */
   0x00,                                 /* bSynchAddress */
@@ -410,7 +410,7 @@ static uint8_t USBD_AUDIO_Init(USBD_HandleTypeDef *pdev, uint8_t cfgidx)
  // (void)USBD_LL_PrepareReceive(pdev, AUDIOOutEpAdd, haudio->buffer,
  //                              AUDIO_OUT_PACKET);
 
-  USBD_LL_Transmit(pdev, AUDIO_IN_EP, IsocInBuffDummy, 192);
+  USBD_LL_Transmit(pdev, AUDIO_IN_EP, IsocInBuffDummy, AUDIO_OUT_PACKET);
 
   return (uint8_t)USBD_OK;
 }
@@ -617,7 +617,7 @@ static uint8_t USBD_AUDIO_DataIn(USBD_HandleTypeDef *pdev, uint8_t epnum)
 	case BUFFER_FILLING:
 	case BUFFER_FULL:
 		USBD_LL_FlushEP(pdev, AUDIO_IN_EP);
-		USBD_LL_Transmit(pdev, AUDIO_IN_EP, IsocInBuffDummy, SAMPLES_8_MS);
+		USBD_LL_Transmit(pdev, AUDIO_IN_EP, IsocInBuffDummy, AUDIO_OUT_PACKET);
 		break;
 	}
 
