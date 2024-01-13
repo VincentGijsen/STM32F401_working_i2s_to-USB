@@ -103,7 +103,7 @@ volatile USBD_HandleTypeDef *pdevRef;
   (uint8_t)(frq), (uint8_t)((frq >> 8)), (uint8_t)((frq >> 16))
 
 #define AUDIO_PACKET_SZE(frq) \
-  (uint8_t)(((frq * 2U * 2U) / 1000U) & 0xFFU), (uint8_t)((((frq * 2U * 2U) / 1000U) >> 8) & 0xFFU)
+  (uint8_t)((((frq * 2U * 2U) )/ 1000U)+4 & 0xFFU), (uint8_t)((((frq * 2U * 2U) / 1000U) >> 8) & 0xFFU)
 
 #ifdef USE_USBD_COMPOSITE
 #define AUDIO_PACKET_SZE_WORD(frq)     (uint32_t)((((frq) * 2U * 2U)/1000U))
@@ -600,10 +600,29 @@ static uint8_t USBD_AUDIO_DataIn(USBD_HandleTypeDef *pdev, uint8_t epnum)
   UNUSED(pdev);
   UNUSED(epnum);
 
+   USBD_AUDIO_HandleTypeDef *haudio;
+   haudio = (USBD_AUDIO_HandleTypeDef *)pdev->pClassDataCmsit[pdev->classId];
+   BUFFER_CMD_typeDef status = Buffer_GetNextAudioFrame(haudio);
+
+	switch (status) {
+	case BUFFER_OK:
+		USBD_LL_FlushEP(pdev, AUDIO_IN_EP);
+		USBD_LL_Transmit(pdev, AUDIO_IN_EP, (uint8_t*)(&nextAudioFrame.data[0]),
+				nextAudioFrame.len);
+		break;
+
+	case BUFFER_OVERFLOW:
+	case BUFFER_EMPTY:
+	case BUFFER_ERROR:
+	case BUFFER_FILLING:
+	case BUFFER_FULL:
+		USBD_LL_FlushEP(pdev, AUDIO_IN_EP);
+		USBD_LL_Transmit(pdev, AUDIO_IN_EP, IsocInBuffDummy, SAMPLES_8_MS);
+		break;
+	}
 
 
-
-
+/*
 
 
   if (dataReady ==1 || dataReady==2){
@@ -632,7 +651,7 @@ static uint8_t USBD_AUDIO_DataIn(USBD_HandleTypeDef *pdev, uint8_t epnum)
   	   // usbPkgSendFlag =1;
 
 
-
+*/
 
 
 
@@ -707,6 +726,8 @@ static uint8_t USBD_AUDIO_SOF(USBD_HandleTypeDef *pdev)
 
 	  pdevRef = pdev;
       usbPkgSendFlag=1;
+
+      Buffer_Init();
 
   }
 
